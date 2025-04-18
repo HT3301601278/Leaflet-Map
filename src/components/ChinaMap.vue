@@ -43,7 +43,7 @@
 </template>
 
 <script>
-import { onMounted, ref, onUnmounted } from 'vue';
+import {onMounted, onUnmounted, ref} from 'vue';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import 'leaflet-draw';
