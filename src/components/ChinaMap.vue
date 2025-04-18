@@ -278,11 +278,9 @@ export default {
       // 2. 地形图 (使用多个可能的源)
       const terrainUrls = [
         // Thunderforest地形图 (需要API key)
-        'https://tile.thunderforest.com/landscape/{z}/{x}/{y}.png?apikey=6170aad10dfd42a38d4d8c709a536f38',
+        'https://tile.thunderforest.com/landscape/{z}/{x}/{y}.png?apikey=04304bc87bce490f92ab8feb966fbe3e',
         // OpenTopoMap地形图
-        'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
-        // MapBox地形图 (无需API key的版本)
-        'https://api.mapbox.com/styles/v1/mapbox/outdoors-v11/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw'
+        'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png'
       ];
 
       baseLayers.value.terrain = L.tileLayer(terrainUrls[0], {
