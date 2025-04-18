@@ -5,6 +5,7 @@
       <div class="control-title">选择方式</div>
       <button @click="enableBoxSelect" :class="{ active: selectionMode === 'box' }" title="在地图上拖动鼠标绘制矩形区域">框选</button>
       <button @click="enablePointSelect" :class="{ active: selectionMode === 'point' }" title="点击地图标记位置">点选</button>
+      <button @click="enableEditMode" :class="{ active: selectionMode === 'edit' }" title="编辑已选择的区域">编辑</button>
       <button @click="clearSelection" title="清除所有已选择的区域和点">清除</button>
       <div class="map-layers-control">
         <div class="control-title">地图类型</div>
@@ -310,27 +311,9 @@ export default {
 
       // 配置绘制控件
       drawControl.value = new L.Control.Draw({
-        draw: {
-          polyline: false,
-          circle: false,
-          circlemarker: false,
-          marker: false,
-          polygon: false,
-          rectangle: {
-            shapeOptions: {
-              color: '#3498db',
-              weight: 3
-            }
-          }
-        },
-        edit: {
-          featureGroup: drawnItems.value,
-          remove: true
-        }
+        draw: false, // 禁用所有绘制控件
+        edit: false  // 禁用编辑控件
       });
-
-      // 添加绘制控件到地图
-      map.value.addControl(drawControl.value);
 
       // 监听绘制完成事件
       map.value.on(L.Draw.Event.CREATED, (event) => {
@@ -401,6 +384,27 @@ export default {
       baseLayers.value.osm.addTo(map.value);
     };
 
+    // 启用编辑模式
+    const enableEditMode = () => {
+      // 如果已经是编辑模式，不做任何操作
+      if (selectionMode.value === 'edit') {
+        return;
+      }
+
+      // 先禁用所有选择模式
+      disableAllSelectionModes();
+
+      // 设置选择模式为编辑
+      selectionMode.value = 'edit';
+
+      // 遍历所有已选择的项目，使其可编辑
+      drawnItems.value.eachLayer((layer) => {
+        if (layer instanceof L.Rectangle) {
+          layer.editing.enable();
+        }
+      });
+    };
+
     // 禁用当前所有选择模式
     const disableAllSelectionModes = () => {
       // 禁用当前活动的绘制工具
@@ -414,6 +418,13 @@ export default {
         map.value.off('click', map.value._pointSelectHandler);
         map.value._pointSelectHandler = null;
       }
+
+      // 禁用所有图层的编辑模式
+      drawnItems.value.eachLayer((layer) => {
+        if (layer.editing) {
+          layer.editing.disable();
+        }
+      });
     };
 
     // 启用区域框选
@@ -473,13 +484,13 @@ export default {
     const clearSelection = () => {
       // 清除所有已绘制的图层
       drawnItems.value.clearLayers();
-
+      
       // 清空选择列表
       selectedItems.value = [];
-
+      
       // 禁用所有选择模式
       disableAllSelectionModes();
-
+      
       // 重置选择模式
       selectionMode.value = 'none';
     };
@@ -510,7 +521,8 @@ export default {
       formatLatLng,
       formatBounds,
       switchLayer,
-      dismissError
+      dismissError,
+      enableEditMode,
     };
   }
 };
