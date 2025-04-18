@@ -14,7 +14,10 @@
       <div class="control-title">选择方式</div>
       <button @click="enableBoxSelect" :class="{ active: selectionMode === 'box' }" title="在地图上拖动鼠标绘制矩形区域">框选</button>
       <button @click="enablePointSelect" :class="{ active: selectionMode === 'point' }" title="点击地图标记位置">点选</button>
-      <button @click="enableEditMode" :class="{ active: selectionMode === 'edit' }" title="编辑已选择的区域">编辑</button>
+      <button @click="enableEditMode" 
+        :class="{ active: selectionMode === 'edit', disabled: !hasRectangles }" 
+        :disabled="!hasRectangles"
+        title="编辑已选择的区域">编辑</button>
       <button @click="clearSelection" title="清除所有已选择的区域和点">清除</button>
       <div class="map-layers-control">
         <div class="control-title">地图类型</div>
@@ -78,6 +81,7 @@ export default {
     const layerLoading = ref(null);
     const mapError = ref('');
     const loadTimers = ref({});
+    const hasRectangles = ref(false);
 
     // 格式化经纬度
     const formatLatLng = (latlng) => {
@@ -328,11 +332,22 @@ export default {
         edit: false  // 禁用编辑控件
       });
 
+      // 检查是否有矩形区域
+      const checkRectangles = () => {
+        let found = false;
+        drawnItems.value.eachLayer((layer) => {
+          if (layer instanceof L.Rectangle) {
+            found = true;
+          }
+        });
+        hasRectangles.value = found;
+      };
+
       // 监听绘制完成事件
       map.value.on(L.Draw.Event.CREATED, (event) => {
         const layer = event.layer;
         drawnItems.value.addLayer(layer);
-
+        
         // 记录选择的区域或点
         if (event.layerType === 'rectangle') {
           selectedItems.value.push({
@@ -340,6 +355,7 @@ export default {
             bounds: layer.getBounds(),
             layer: layer
           });
+          checkRectangles(); // 检查矩形状态
         } else if (event.layerType === 'marker') {
           selectedItems.value.push({
             type: 'point',
@@ -506,6 +522,9 @@ export default {
       
       // 重置选择模式
       selectionMode.value = 'none';
+
+      // 更新矩形状态
+      hasRectangles.value = false;
     };
 
     // 地图缩放功能
@@ -547,6 +566,7 @@ export default {
       enableEditMode,
       zoomIn,
       zoomOut,
+      hasRectangles,
     };
   }
 };
@@ -678,6 +698,16 @@ export default {
 .layer-options button.active:hover {
   background-color: #2980b9;
   transform: translateY(-1px);
+}
+
+.map-controls button.disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  pointer-events: none;
+  background-color: #f0f0f0 !important;
+  border-color: #ddd !important;
+  color: #999 !important;
+  box-shadow: none !important;
 }
 
 .map-error-notice {
