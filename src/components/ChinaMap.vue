@@ -1,40 +1,45 @@
 <template>
   <div class="map-container">
     <div id="map" ref="mapContainer"></div>
-    <div class="map-controls">
-      <div class="control-title">地图操作</div>
-      <div class="zoom-controls">
-        <button @click="zoomIn" title="放大地图">
-          <span class="zoom-icon">+</span>
-        </button>
-        <button @click="zoomOut" title="缩小地图">
-          <span class="zoom-icon">−</span>
-        </button>
+    <div class="map-controls" :class="{ 'collapsed': isControlsCollapsed }">
+      <div class="collapse-button" @click="toggleControls" :title="isControlsCollapsed ? '展开控制面板' : '收起控制面板'">
+        <span class="collapse-icon">{{ isControlsCollapsed ? '«' : '»' }}</span>
       </div>
-      <div class="control-title">选择方式</div>
-      <button @click="enableBoxSelect" :class="{ active: selectionMode === 'box' }" title="在地图上拖动鼠标绘制矩形区域">框选</button>
-      <button @click="enablePointSelect" :class="{ active: selectionMode === 'point' }" title="点击地图标记位置">点选</button>
-      <button @click="enableEditMode" 
-        :class="{ active: selectionMode === 'edit', disabled: !hasRectangles }" 
-        :disabled="!hasRectangles"
-        title="编辑已选择的区域">编辑</button>
-      <button @click="clearSelection" title="清除所有已选择的区域和点">清除</button>
-      <div class="map-layers-control">
-        <div class="control-title">地图类型</div>
-        <div class="layer-options">
-          <button @click="switchLayer('osm')" :class="{ active: currentLayer === 'osm' }">标准图</button>
-          <button @click="switchLayer('terrain')" :class="{ active: currentLayer === 'terrain' }">
-            地形图
-            <span v-if="layerLoading === 'terrain'" class="loading-indicator"></span>
+      <div class="controls-content" :class="{ 'hidden': isControlsCollapsed }">
+        <div class="control-title">地图操作</div>
+        <div class="zoom-controls">
+          <button @click="zoomIn" title="放大地图">
+            <span class="zoom-icon">+</span>
           </button>
-          <button @click="switchLayer('satellite')" :class="{ active: currentLayer === 'satellite' }">
-            卫星图
-            <span v-if="layerLoading === 'satellite'" class="loading-indicator"></span>
+          <button @click="zoomOut" title="缩小地图">
+            <span class="zoom-icon">−</span>
           </button>
-          <button @click="switchLayer('admin')" :class="{ active: currentLayer === 'admin' }">
-            行政图
-            <span v-if="layerLoading === 'admin'" class="loading-indicator"></span>
-          </button>
+        </div>
+        <div class="control-title">选择方式</div>
+        <button @click="enableBoxSelect" :class="{ active: selectionMode === 'box' }" title="在地图上拖动鼠标绘制矩形区域">框选</button>
+        <button @click="enablePointSelect" :class="{ active: selectionMode === 'point' }" title="点击地图标记位置">点选</button>
+        <button @click="enableEditMode" 
+          :class="{ active: selectionMode === 'edit', disabled: !hasRectangles }" 
+          :disabled="!hasRectangles"
+          title="编辑已选择的区域">编辑</button>
+        <button @click="clearSelection" title="清除所有已选择的区域和点">清除</button>
+        <div class="map-layers-control">
+          <div class="control-title">地图类型</div>
+          <div class="layer-options">
+            <button @click="switchLayer('osm')" :class="{ active: currentLayer === 'osm' }">标准图</button>
+            <button @click="switchLayer('terrain')" :class="{ active: currentLayer === 'terrain' }">
+              地形图
+              <span v-if="layerLoading === 'terrain'" class="loading-indicator"></span>
+            </button>
+            <button @click="switchLayer('satellite')" :class="{ active: currentLayer === 'satellite' }">
+              卫星图
+              <span v-if="layerLoading === 'satellite'" class="loading-indicator"></span>
+            </button>
+            <button @click="switchLayer('admin')" :class="{ active: currentLayer === 'admin' }">
+              行政图
+              <span v-if="layerLoading === 'admin'" class="loading-indicator"></span>
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -82,6 +87,7 @@ export default {
     const mapError = ref('');
     const loadTimers = ref({});
     const hasRectangles = ref(false);
+    const isControlsCollapsed = ref(false);
 
     // 格式化经纬度
     const formatLatLng = (latlng) => {
@@ -555,6 +561,11 @@ export default {
       map.value.zoomOut();
     };
 
+    // 切换控制面板的显示/隐藏状态
+    const toggleControls = () => {
+      isControlsCollapsed.value = !isControlsCollapsed.value;
+    };
+
     onMounted(() => {
       // 初始化地图
       initMap();
@@ -586,6 +597,8 @@ export default {
       zoomIn,
       zoomOut,
       hasRectangles,
+      isControlsCollapsed,
+      toggleControls,
     };
   }
 };
@@ -612,6 +625,13 @@ export default {
   right: 20px;
   z-index: 1000;
   display: flex;
+  flex-direction: row;
+  gap: 8px;
+  transition: all 0.3s ease;
+}
+
+.controls-content {
+  display: flex;
   flex-direction: column;
   gap: 8px;
   background-color: rgba(255, 255, 255, 0.92);
@@ -619,14 +639,48 @@ export default {
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.8);
-  transition: all 0.3s ease;
   backdrop-filter: blur(10px);
   max-width: 180px;
+  transition: all 0.3s ease;
 }
 
-.map-controls:hover {
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15), 0 3px 10px rgba(0, 0, 0, 0.05);
-  transform: translateY(-1px);
+.controls-content.hidden {
+  display: none;
+}
+
+.collapse-button {
+  width: 24px;
+  height: 60px;
+  background-color: rgba(255, 255, 255, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.8);
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+}
+
+.collapse-button:hover {
+  background-color: #fff;
+  transform: translateX(-2px);
+}
+
+.collapse-icon {
+  font-size: 18px;
+  color: #2c3e50;
+  font-weight: bold;
+  user-select: none;
+}
+
+.map-controls.collapsed .collapse-button {
+  border-radius: 8px;
+}
+
+.map-controls.collapsed .collapse-button:hover {
+  transform: translateX(2px);
 }
 
 .map-layers-control {
