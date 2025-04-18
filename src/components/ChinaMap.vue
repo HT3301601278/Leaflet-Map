@@ -10,10 +10,23 @@
       <div class="control-title">地图类型</div>
       <div class="layer-options">
         <button @click="switchLayer('osm')" :class="{ active: currentLayer === 'osm' }">标准地图</button>
-        <button @click="switchLayer('terrain')" :class="{ active: currentLayer === 'terrain' }">地形图</button>
-        <button @click="switchLayer('satellite')" :class="{ active: currentLayer === 'satellite' }">卫星图</button>
-        <button @click="switchLayer('admin')" :class="{ active: currentLayer === 'admin' }">行政区图</button>
+        <button @click="switchLayer('terrain')" :class="{ active: currentLayer === 'terrain' }">
+          地形图
+          <span v-if="layerLoading === 'terrain'" class="loading-indicator"></span>
+        </button>
+        <button @click="switchLayer('satellite')" :class="{ active: currentLayer === 'satellite' }">
+          卫星图
+          <span v-if="layerLoading === 'satellite'" class="loading-indicator"></span>
+        </button>
+        <button @click="switchLayer('admin')" :class="{ active: currentLayer === 'admin' }">
+          行政区图
+          <span v-if="layerLoading === 'admin'" class="loading-indicator"></span>
+        </button>
       </div>
+    </div>
+    <div v-if="mapError" class="map-error-notice">
+      <span>{{ mapError }}</span>
+      <button @click="dismissError" class="dismiss-btn">×</button>
     </div>
     <div v-if="selectedItems.length > 0" class="selection-info">
       <h3>已选择 {{ selectedItems.length }} 项</h3>
@@ -47,6 +60,9 @@ export default {
     const selectedItems = ref([]);
     const currentLayer = ref('osm');
     const baseLayers = ref({});
+    const layerLoading = ref(null);
+    const mapError = ref('');
+    const loadTimers = ref({});
     
     // 格式化经纬度
     const formatLatLng = (latlng) => {
@@ -56,6 +72,11 @@ export default {
     // 格式化边界
     const formatBounds = (bounds) => {
       return `${bounds._southWest.lat.toFixed(4)}, ${bounds._southWest.lng.toFixed(4)} 至 ${bounds._northEast.lat.toFixed(4)}, ${bounds._northEast.lng.toFixed(4)}`;
+    };
+    
+    // 关闭错误提示
+    const dismissError = () => {
+      mapError.value = '';
     };
     
     // 移除指定项
@@ -76,16 +97,153 @@ export default {
     const switchLayer = (layerName) => {
       if (currentLayer.value === layerName) return;
       
+      // 设置加载状态
+      layerLoading.value = layerName;
+      
       // 移除当前图层
       if (baseLayers.value[currentLayer.value]) {
         map.value.removeLayer(baseLayers.value[currentLayer.value]);
       }
       
+      // 清除之前的错误
+      mapError.value = '';
+      
       // 添加新图层
       if (baseLayers.value[layerName]) {
+        // 如果是地形图，并且有备选图层，考虑使用备选
+        if (layerName === 'terrain' && baseLayers.value.terrainAlt) {
+          // 如果主地形图已经尝试过并失败，直接使用备选
+          if (baseLayers.value.terrain._failedToLoad) {
+            map.value.addLayer(baseLayers.value.terrainAlt);
+            currentLayer.value = layerName;
+            layerLoading.value = null;
+            return;
+          }
+        }
+        
+        // 添加请求的图层
         map.value.addLayer(baseLayers.value[layerName]);
         currentLayer.value = layerName;
+        
+        // 设置超时检查，如果图层在一定时间内没有加载成功，显示错误
+        if (loadTimers.value[layerName]) {
+          clearTimeout(loadTimers.value[layerName]);
+        }
+        
+        loadTimers.value[layerName] = setTimeout(() => {
+          if (layerLoading.value === layerName) {
+            // 检查是否有备选图层可以使用
+            if (layerName === 'terrain' && !baseLayers.value.terrain._loaded) {
+              console.log('地形图加载超时，尝试备选地形图');
+              
+              // 标记主地形图加载失败
+              baseLayers.value.terrain._failedToLoad = true;
+              
+              // 移除主地形图
+              map.value.removeLayer(baseLayers.value.terrain);
+              
+              // 确保备选地形图存在
+              if (!baseLayers.value.terrainAlt) {
+                baseLayers.value.terrainAlt = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+                  attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a>',
+                  maxZoom: 17
+                });
+                
+                handleLayerEvents('terrainAlt', baseLayers.value.terrainAlt);
+              }
+              
+              // 添加备选地形图
+              map.value.addLayer(baseLayers.value.terrainAlt);
+            } else {
+              // 显示错误信息
+              mapError.value = `${getLayerName(layerName)}加载失败，请检查网络连接或尝试其他地图类型`;
+              
+              // 回退到标准地图
+              if (currentLayer.value !== 'osm') {
+                map.value.removeLayer(baseLayers.value[currentLayer.value]);
+                map.value.addLayer(baseLayers.value.osm);
+                currentLayer.value = 'osm';
+              }
+            }
+            
+            layerLoading.value = null;
+          }
+        }, 8000); // 8秒超时
       }
+    };
+    
+    // 获取图层的显示名称
+    const getLayerName = (layerKey) => {
+      const names = {
+        osm: '标准地图',
+        terrain: '地形图',
+        satellite: '卫星图',
+        admin: '行政区图'
+      };
+      return names[layerKey] || layerKey;
+    };
+    
+    // 监听图层加载事件和错误事件
+    const handleLayerEvents = (layerName, layer) => {
+      layer.on('tileerror', (error) => {
+        console.error(`${layerName} 图层加载错误:`, error);
+        
+        // 标记该图层加载失败
+        layer._failedToLoad = true;
+        
+        // 如果是地形图加载失败，自动切换到备选地形图
+        if (layerName === 'terrain' && currentLayer.value === 'terrain') {
+          if (!baseLayers.value.terrainAlt) {
+            console.log('尝试加载备选地形图...');
+            baseLayers.value.terrainAlt = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
+              attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a>',
+              maxZoom: 17
+            });
+            
+            // 监听备选图层事件
+            baseLayers.value.terrainAlt.on('load', () => {
+              console.log('备选地形图加载成功');
+              layerLoading.value = null;
+              
+              if (loadTimers.value[layerName]) {
+                clearTimeout(loadTimers.value[layerName]);
+              }
+            });
+            
+            baseLayers.value.terrainAlt.on('tileerror', () => {
+              console.error('备选地形图也加载失败');
+              // 如果备选也失败，回退到标准地图
+              map.value.removeLayer(baseLayers.value.terrainAlt);
+              map.value.addLayer(baseLayers.value.osm);
+              currentLayer.value = 'osm';
+              layerLoading.value = null;
+              
+              mapError.value = '所有地形图源都加载失败，已切换回标准地图';
+              
+              if (loadTimers.value[layerName]) {
+                clearTimeout(loadTimers.value[layerName]);
+              }
+            });
+            
+            map.value.removeLayer(layer);
+            map.value.addLayer(baseLayers.value.terrainAlt);
+          }
+        }
+      });
+      
+      layer.on('load', () => {
+        console.log(`${layerName} 图层加载成功`);
+        layer._loaded = true;
+        
+        // 如果是当前正在加载的图层，取消加载状态
+        if (layerLoading.value === layerName) {
+          layerLoading.value = null;
+          
+          if (loadTimers.value[layerName]) {
+            clearTimeout(loadTimers.value[layerName]);
+          }
+        }
+      });
     };
     
     // 初始化地图
@@ -100,12 +258,19 @@ export default {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       });
       
-      // 2. 地形图 (Stamen Terrain)
-      baseLayers.value.terrain = L.tileLayer('https://stamen-tiles-{s}.a.ssl.fastly.net/terrain/{z}/{x}/{y}{r}.png', {
-        attribution: 'Map tiles by <a href="http://stamen.com">Stamen Design</a>, <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a> &mdash; Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
-        subdomains: 'abcd',
-        minZoom: 0,
-        maxZoom: 18
+      // 2. 地形图 (使用多个可能的源)
+      const terrainUrls = [
+        // Thunderforest地形图 (需要API key)
+        'https://tile.thunderforest.com/landscape/{z}/{x}/{y}.png?apikey=6170aad10dfd42a38d4d8c709a536f38',
+        // OpenTopoMap地形图
+        'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+        // MapBox地形图 (无需API key的版本)
+        'https://api.mapbox.com/styles/v1/mapbox/outdoors-v11/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw'
+      ];
+      
+      baseLayers.value.terrain = L.tileLayer(terrainUrls[0], {
+        attribution: 'Maps &copy; <a href="https://www.thunderforest.com">Thunderforest</a>, Data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>',
+        maxZoom: 22
       });
       
       // 3. 卫星图 (Esri World Imagery)
@@ -118,9 +283,11 @@ export default {
         subdomains: "1234",
         attribution: '&copy; <a href="https://www.amap.com/">高德地图</a>'
       });
-      
-      // 默认添加标准地图图层
-      baseLayers.value.osm.addTo(map.value);
+
+      // 为每个图层添加事件监听
+      Object.keys(baseLayers.value).forEach(key => {
+        handleLayerEvents(key, baseLayers.value[key]);
+      });
       
       // 初始化绘制图层
       drawnItems.value = new L.FeatureGroup();
@@ -214,6 +381,9 @@ export default {
         
         console.log('已删除选中区域');
       });
+      
+      // 默认添加标准地图图层
+      baseLayers.value.osm.addTo(map.value);
     };
     
     // 禁用当前所有选择模式
@@ -316,13 +486,16 @@ export default {
       selectionMode,
       selectedItems,
       currentLayer,
+      layerLoading,
+      mapError,
       enableBoxSelect,
       enablePointSelect,
       clearSelection,
       removeItem,
       formatLatLng,
       formatBounds,
-      switchLayer
+      switchLayer,
+      dismissError
     };
   }
 };
@@ -371,6 +544,63 @@ export default {
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.2);
   transition: all 0.3s ease;
+}
+
+.map-error-notice {
+  position: absolute;
+  top: 80px;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 1001;
+  background-color: #fff3cd;
+  color: #856404;
+  padding: 10px 15px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border: 1px solid #ffeeba;
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  max-width: 400px;
+  animation: slideDown 0.3s ease;
+}
+
+@keyframes slideDown {
+  from {
+    opacity: 0;
+    transform: translate(-50%, -20px);
+  }
+  to {
+    opacity: 1;
+    transform: translate(-50%, 0);
+  }
+}
+
+.dismiss-btn {
+  background: none;
+  border: none;
+  color: #856404;
+  cursor: pointer;
+  font-size: 18px;
+  padding: 0 5px;
+}
+
+.loading-indicator {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border: 2px solid rgba(0, 0, 0, 0.1);
+  border-radius: 50%;
+  border-top-color: #3498db;
+  animation: spin 1s linear infinite;
+  margin-left: 5px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .control-title {
