@@ -2,6 +2,15 @@
   <div class="map-container">
     <div id="map" ref="mapContainer"></div>
     <div class="map-controls">
+      <div class="control-title">地图操作</div>
+      <div class="zoom-controls">
+        <button @click="zoomIn" title="放大地图">
+          <span class="zoom-icon">+</span>
+        </button>
+        <button @click="zoomOut" title="缩小地图">
+          <span class="zoom-icon">−</span>
+        </button>
+      </div>
       <div class="control-title">选择方式</div>
       <button @click="enableBoxSelect" :class="{ active: selectionMode === 'box' }" title="在地图上拖动鼠标绘制矩形区域">框选</button>
       <button @click="enablePointSelect" :class="{ active: selectionMode === 'point' }" title="点击地图标记位置">点选</button>
@@ -267,7 +276,11 @@ export default {
       });
 
       // 设置中国地图的中心点和缩放级别
-      map.value = L.map(mapContainer.value).setView([35.86166, 104.195397], 4);
+      map.value = L.map(mapContainer.value, {
+        center: [35.86166, 104.195397],
+        zoom: 4,
+        zoomControl: false  // 禁用默认的缩放控件
+      });
 
       // 创建不同的底图图层
 
@@ -495,6 +508,15 @@ export default {
       selectionMode.value = 'none';
     };
 
+    // 地图缩放功能
+    const zoomIn = () => {
+      map.value.zoomIn();
+    };
+
+    const zoomOut = () => {
+      map.value.zoomOut();
+    };
+
     onMounted(() => {
       // 初始化地图
       initMap();
@@ -523,6 +545,8 @@ export default {
       switchLayer,
       dismissError,
       enableEditMode,
+      zoomIn,
+      zoomOut,
     };
   }
 };
@@ -815,5 +839,31 @@ export default {
     max-height: 200px;
     padding: 10px;
   }
+}
+
+.zoom-controls {
+  display: flex;
+  gap: 4px;
+  margin-bottom: 12px;
+}
+
+.zoom-controls button {
+  width: 32px !important;
+  height: 32px !important;
+  padding: 0 !important;
+  font-size: 18px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.zoom-icon {
+  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
 }
 </style>
