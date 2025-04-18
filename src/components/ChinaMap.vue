@@ -376,23 +376,34 @@ export default {
         }
       });
 
-      // 监听编辑完成事件
-      map.value.on(L.Draw.Event.EDITED, (event) => {
-        const layers = event.layers;
-        layers.eachLayer((layer) => {
-          // 更新已编辑图层的信息
-          const editedItem = selectedItems.value.find(item => item.layer === layer);
-          if (editedItem) {
-            if (editedItem.type === 'area') {
-              editedItem.bounds = layer.getBounds();
-            } else if (editedItem.type === 'point') {
-              editedItem.latlng = layer.getLatLng();
-            }
-          }
+      // 监听图层编辑事件
+      map.value.on('editable:editing', (event) => {
+        const layer = event.layer;
+        // 找到对应的选中项并更新其边界
+        const editedItem = selectedItems.value.find(item => item.layer === layer);
+        if (editedItem && editedItem.type === 'area') {
+          editedItem.bounds = layer.getBounds();
+        }
+      });
 
-          const editedArea = layer.toGeoJSON();
-          console.log('编辑后的区域:', editedArea);
-        });
+      // 监听编辑完成事件
+      map.value.on('editable:dragend', (event) => {
+        const layer = event.layer;
+        // 找到对应的选中项并更新其边界
+        const editedItem = selectedItems.value.find(item => item.layer === layer);
+        if (editedItem && editedItem.type === 'area') {
+          editedItem.bounds = layer.getBounds();
+        }
+      });
+
+      // 监听顶点拖动完成事件
+      map.value.on('editable:vertex:dragend', (event) => {
+        const layer = event.layer;
+        // 找到对应的选中项并更新其边界
+        const editedItem = selectedItems.value.find(item => item.layer === layer);
+        if (editedItem && editedItem.type === 'area') {
+          editedItem.bounds = layer.getBounds();
+        }
       });
 
       // 监听删除完成事件
@@ -430,6 +441,14 @@ export default {
       drawnItems.value.eachLayer((layer) => {
         if (layer instanceof L.Rectangle) {
           layer.editing.enable();
+          
+          // 添加编辑事件监听
+          layer.on('edit', () => {
+            const editedItem = selectedItems.value.find(item => item.layer === layer);
+            if (editedItem && editedItem.type === 'area') {
+              editedItem.bounds = layer.getBounds();
+            }
+          });
         }
       });
     };
