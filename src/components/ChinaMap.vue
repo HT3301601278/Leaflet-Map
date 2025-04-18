@@ -6,6 +6,15 @@
       <button @click="enablePointSelect" :class="{ active: selectionMode === 'point' }" title="点击地图标记位置">点选</button>
       <button @click="clearSelection" title="清除所有已选择的区域和点">清除选择</button>
     </div>
+    <div class="map-layers-control">
+      <div class="control-title">地图类型</div>
+      <div class="layer-options">
+        <button @click="switchLayer('osm')" :class="{ active: currentLayer === 'osm' }">标准地图</button>
+        <button @click="switchLayer('terrain')" :class="{ active: currentLayer === 'terrain' }">地形图</button>
+        <button @click="switchLayer('satellite')" :class="{ active: currentLayer === 'satellite' }">卫星图</button>
+        <button @click="switchLayer('admin')" :class="{ active: currentLayer === 'admin' }">行政区图</button>
+      </div>
+    </div>
     <div v-if="selectedItems.length > 0" class="selection-info">
       <h3>已选择 {{ selectedItems.length }} 项</h3>
       <div class="selection-list">
@@ -36,6 +45,8 @@ export default {
     const drawControl = ref(null);
     const activeDrawer = ref(null);
     const selectedItems = ref([]);
+    const currentLayer = ref('osm');
+    const baseLayers = ref({});
     
     // 格式化经纬度
     const formatLatLng = (latlng) => {
@@ -61,15 +72,55 @@ export default {
       }
     };
     
+    // 切换地图图层
+    const switchLayer = (layerName) => {
+      if (currentLayer.value === layerName) return;
+      
+      // 移除当前图层
+      if (baseLayers.value[currentLayer.value]) {
+        map.value.removeLayer(baseLayers.value[currentLayer.value]);
+      }
+      
+      // 添加新图层
+      if (baseLayers.value[layerName]) {
+        map.value.addLayer(baseLayers.value[layerName]);
+        currentLayer.value = layerName;
+      }
+    };
+    
     // 初始化地图
     const initMap = () => {
       // 设置中国地图的中心点和缩放级别
       map.value = L.map(mapContainer.value).setView([35.86166, 104.195397], 4);
       
-      // 添加底图图层（使用OpenStreetMap）
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      // 创建不同的底图图层
+      
+      // 1. OpenStreetMap (标准地图)
+      baseLayers.value.osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-      }).addTo(map.value);
+      });
+      
+      // 2. 地形图 (Stamen Terrain)
+      baseLayers.value.terrain = L.tileLayer('https://stamen-tiles-{s}.a.ssl.fastly.net/terrain/{z}/{x}/{y}{r}.png', {
+        attribution: 'Map tiles by <a href="http://stamen.com">Stamen Design</a>, <a href="http://creativecommons.org/licenses/by/3.0">CC BY 3.0</a> &mdash; Map data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+        subdomains: 'abcd',
+        minZoom: 0,
+        maxZoom: 18
+      });
+      
+      // 3. 卫星图 (Esri World Imagery)
+      baseLayers.value.satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
+        attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
+      });
+      
+      // 4. 行政区图 (高德地图行政区划)
+      baseLayers.value.admin = L.tileLayer('https://wprd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&style=7&x={x}&y={y}&z={z}', {
+        subdomains: "1234",
+        attribution: '&copy; <a href="https://www.amap.com/">高德地图</a>'
+      });
+      
+      // 默认添加标准地图图层
+      baseLayers.value.osm.addTo(map.value);
       
       // 初始化绘制图层
       drawnItems.value = new L.FeatureGroup();
@@ -85,7 +136,7 @@ export default {
           polygon: false,
           rectangle: {
             shapeOptions: {
-              color: '#42b983',
+              color: '#3498db',
               weight: 3
             }
           }
@@ -264,12 +315,14 @@ export default {
       mapContainer,
       selectionMode,
       selectedItems,
+      currentLayer,
       enableBoxSelect,
       enablePointSelect,
       clearSelection,
       removeItem,
       formatLatLng,
-      formatBounds
+      formatBounds,
+      switchLayer
     };
   }
 };
@@ -306,7 +359,35 @@ export default {
   transition: all 0.3s ease;
 }
 
-.map-controls button {
+.map-layers-control {
+  position: absolute;
+  top: 20px;
+  left: 20px;
+  z-index: 1000;
+  background-color: white;
+  padding: 10px;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  transition: all 0.3s ease;
+}
+
+.control-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 8px;
+  color: #2c3e50;
+}
+
+.layer-options {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.map-controls button,
+.layer-options button {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -323,9 +404,11 @@ export default {
   position: relative;
   overflow: hidden;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  white-space: nowrap;
 }
 
-.map-controls button::before {
+.map-controls button::before,
+.layer-options button::before {
   content: "";
   position: absolute;
   top: 0;
@@ -336,20 +419,23 @@ export default {
   z-index: -1;
 }
 
-.map-controls button.active {
+.map-controls button.active,
+.layer-options button.active {
   background-color: #3498db;
   color: white;
   border-color: #3498db;
   box-shadow: 0 2px 5px rgba(52, 152, 219, 0.3);
 }
 
-.map-controls button:hover {
+.map-controls button:hover,
+.layer-options button:hover {
   transform: translateY(-1px);
   box-shadow: 0 3px 5px rgba(0, 0, 0, 0.1);
   background-color: #f8f9fa;
 }
 
-.map-controls button.active:hover {
+.map-controls button.active:hover,
+.layer-options button.active:hover {
   background-color: #2980b9;
 }
 
@@ -438,6 +524,17 @@ export default {
     flex-direction: column;
     gap: 5px;
     padding: 8px;
+  }
+  
+  .map-layers-control {
+    top: 10px;
+    left: 10px;
+    padding: 8px;
+  }
+  
+  .layer-options button {
+    padding: 6px 10px;
+    font-size: 12px;
   }
   
   .selection-info {
