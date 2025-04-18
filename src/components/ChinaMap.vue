@@ -2,26 +2,27 @@
   <div class="map-container">
     <div id="map" ref="mapContainer"></div>
     <div class="map-controls">
-      <button @click="enableBoxSelect" :class="{ active: selectionMode === 'box' }" title="在地图上拖动鼠标绘制矩形区域">区域框选</button>
+      <div class="control-title">选择方式</div>
+      <button @click="enableBoxSelect" :class="{ active: selectionMode === 'box' }" title="在地图上拖动鼠标绘制矩形区域">框选</button>
       <button @click="enablePointSelect" :class="{ active: selectionMode === 'point' }" title="点击地图标记位置">点选</button>
-      <button @click="clearSelection" title="清除所有已选择的区域和点">清除选择</button>
-    </div>
-    <div class="map-layers-control">
-      <div class="control-title">地图类型</div>
-      <div class="layer-options">
-        <button @click="switchLayer('osm')" :class="{ active: currentLayer === 'osm' }">标准地图</button>
-        <button @click="switchLayer('terrain')" :class="{ active: currentLayer === 'terrain' }">
-          地形图
-          <span v-if="layerLoading === 'terrain'" class="loading-indicator"></span>
-        </button>
-        <button @click="switchLayer('satellite')" :class="{ active: currentLayer === 'satellite' }">
-          卫星图
-          <span v-if="layerLoading === 'satellite'" class="loading-indicator"></span>
-        </button>
-        <button @click="switchLayer('admin')" :class="{ active: currentLayer === 'admin' }">
-          行政区图
-          <span v-if="layerLoading === 'admin'" class="loading-indicator"></span>
-        </button>
+      <button @click="clearSelection" title="清除所有已选择的区域和点">清除</button>
+      <div class="map-layers-control">
+        <div class="control-title">地图类型</div>
+        <div class="layer-options">
+          <button @click="switchLayer('osm')" :class="{ active: currentLayer === 'osm' }">标准图</button>
+          <button @click="switchLayer('terrain')" :class="{ active: currentLayer === 'terrain' }">
+            地形图
+            <span v-if="layerLoading === 'terrain'" class="loading-indicator"></span>
+          </button>
+          <button @click="switchLayer('satellite')" :class="{ active: currentLayer === 'satellite' }">
+            卫星图
+            <span v-if="layerLoading === 'satellite'" class="loading-indicator"></span>
+          </button>
+          <button @click="switchLayer('admin')" :class="{ active: currentLayer === 'admin' }">
+            行政图
+            <span v-if="layerLoading === 'admin'" class="loading-indicator"></span>
+          </button>
+        </div>
       </div>
     </div>
     <div v-if="mapError" class="map-error-notice">
@@ -63,51 +64,51 @@ export default {
     const layerLoading = ref(null);
     const mapError = ref('');
     const loadTimers = ref({});
-    
+
     // 格式化经纬度
     const formatLatLng = (latlng) => {
       return `${latlng.lat.toFixed(4)}, ${latlng.lng.toFixed(4)}`;
     };
-    
+
     // 格式化边界
     const formatBounds = (bounds) => {
       return `${bounds._southWest.lat.toFixed(4)}, ${bounds._southWest.lng.toFixed(4)} 至 ${bounds._northEast.lat.toFixed(4)}, ${bounds._northEast.lng.toFixed(4)}`;
     };
-    
+
     // 关闭错误提示
     const dismissError = () => {
       mapError.value = '';
     };
-    
+
     // 移除指定项
     const removeItem = (index) => {
       if (index >= 0 && index < selectedItems.value.length) {
         // 获取要移除的项目
         const item = selectedItems.value[index];
-        
+
         // 从选择列表中移除
         selectedItems.value.splice(index, 1);
-        
+
         // 从地图绘制层移除
         drawnItems.value.removeLayer(item.layer);
       }
     };
-    
+
     // 切换地图图层
     const switchLayer = (layerName) => {
       if (currentLayer.value === layerName) return;
-      
+
       // 设置加载状态
       layerLoading.value = layerName;
-      
+
       // 移除当前图层
       if (baseLayers.value[currentLayer.value]) {
         map.value.removeLayer(baseLayers.value[currentLayer.value]);
       }
-      
+
       // 清除之前的错误
       mapError.value = '';
-      
+
       // 添加新图层
       if (baseLayers.value[layerName]) {
         // 如果是地形图，并且有备选图层，考虑使用备选
@@ -120,44 +121,44 @@ export default {
             return;
           }
         }
-        
+
         // 添加请求的图层
         map.value.addLayer(baseLayers.value[layerName]);
         currentLayer.value = layerName;
-        
+
         // 设置超时检查，如果图层在一定时间内没有加载成功，显示错误
         if (loadTimers.value[layerName]) {
           clearTimeout(loadTimers.value[layerName]);
         }
-        
+
         loadTimers.value[layerName] = setTimeout(() => {
           if (layerLoading.value === layerName) {
             // 检查是否有备选图层可以使用
             if (layerName === 'terrain' && !baseLayers.value.terrain._loaded) {
               console.log('地形图加载超时，尝试备选地形图');
-              
+
               // 标记主地形图加载失败
               baseLayers.value.terrain._failedToLoad = true;
-              
+
               // 移除主地形图
               map.value.removeLayer(baseLayers.value.terrain);
-              
+
               // 确保备选地形图存在
               if (!baseLayers.value.terrainAlt) {
                 baseLayers.value.terrainAlt = L.tileLayer('https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png', {
                   attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a>',
                   maxZoom: 17
                 });
-                
+
                 handleLayerEvents('terrainAlt', baseLayers.value.terrainAlt);
               }
-              
+
               // 添加备选地形图
               map.value.addLayer(baseLayers.value.terrainAlt);
             } else {
               // 显示错误信息
               mapError.value = `${getLayerName(layerName)}加载失败，请检查网络连接或尝试其他地图类型`;
-              
+
               // 回退到标准地图
               if (currentLayer.value !== 'osm') {
                 map.value.removeLayer(baseLayers.value[currentLayer.value]);
@@ -165,13 +166,13 @@ export default {
                 currentLayer.value = 'osm';
               }
             }
-            
+
             layerLoading.value = null;
           }
         }, 8000); // 8秒超时
       }
     };
-    
+
     // 获取图层的显示名称
     const getLayerName = (layerKey) => {
       const names = {
@@ -182,15 +183,15 @@ export default {
       };
       return names[layerKey] || layerKey;
     };
-    
+
     // 监听图层加载事件和错误事件
     const handleLayerEvents = (layerName, layer) => {
       layer.on('tileerror', (error) => {
         console.error(`${layerName} 图层加载错误:`, error);
-        
+
         // 标记该图层加载失败
         layer._failedToLoad = true;
-        
+
         // 如果是地形图加载失败，自动切换到备选地形图
         if (layerName === 'terrain' && currentLayer.value === 'terrain') {
           if (!baseLayers.value.terrainAlt) {
@@ -199,17 +200,17 @@ export default {
               attribution: 'Map data: &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors, <a href="http://viewfinderpanoramas.org">SRTM</a> | Map style: &copy; <a href="https://opentopomap.org">OpenTopoMap</a>',
               maxZoom: 17
             });
-            
+
             // 监听备选图层事件
             baseLayers.value.terrainAlt.on('load', () => {
               console.log('备选地形图加载成功');
               layerLoading.value = null;
-              
+
               if (loadTimers.value[layerName]) {
                 clearTimeout(loadTimers.value[layerName]);
               }
             });
-            
+
             baseLayers.value.terrainAlt.on('tileerror', () => {
               console.error('备选地形图也加载失败');
               // 如果备选也失败，回退到标准地图
@@ -217,47 +218,47 @@ export default {
               map.value.addLayer(baseLayers.value.osm);
               currentLayer.value = 'osm';
               layerLoading.value = null;
-              
+
               mapError.value = '所有地形图源都加载失败，已切换回标准地图';
-              
+
               if (loadTimers.value[layerName]) {
                 clearTimeout(loadTimers.value[layerName]);
               }
             });
-            
+
             map.value.removeLayer(layer);
             map.value.addLayer(baseLayers.value.terrainAlt);
           }
         }
       });
-      
+
       layer.on('load', () => {
         console.log(`${layerName} 图层加载成功`);
         layer._loaded = true;
-        
+
         // 如果是当前正在加载的图层，取消加载状态
         if (layerLoading.value === layerName) {
           layerLoading.value = null;
-          
+
           if (loadTimers.value[layerName]) {
             clearTimeout(loadTimers.value[layerName]);
           }
         }
       });
     };
-    
+
     // 初始化地图
     const initMap = () => {
       // 设置中国地图的中心点和缩放级别
       map.value = L.map(mapContainer.value).setView([35.86166, 104.195397], 4);
-      
+
       // 创建不同的底图图层
-      
+
       // 1. OpenStreetMap (标准地图)
       baseLayers.value.osm = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
       });
-      
+
       // 2. 地形图 (使用多个可能的源)
       const terrainUrls = [
         // Thunderforest地形图 (需要API key)
@@ -267,17 +268,17 @@ export default {
         // MapBox地形图 (无需API key的版本)
         'https://api.mapbox.com/styles/v1/mapbox/outdoors-v11/tiles/{z}/{x}/{y}?access_token=pk.eyJ1IjoibWFwYm94IiwiYSI6ImNpejY4NXVycTA2emYycXBndHRqcmZ3N3gifQ.rJcFIG214AriISLbB6B5aw'
       ];
-      
+
       baseLayers.value.terrain = L.tileLayer(terrainUrls[0], {
         attribution: 'Maps &copy; <a href="https://www.thunderforest.com">Thunderforest</a>, Data &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap contributors</a>',
         maxZoom: 22
       });
-      
+
       // 3. 卫星图 (Esri World Imagery)
       baseLayers.value.satellite = L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}', {
         attribution: 'Tiles &copy; Esri &mdash; Source: Esri, i-cubed, USDA, USGS, AEX, GeoEye, Getmapping, Aerogrid, IGN, IGP, UPR-EGP, and the GIS User Community'
       });
-      
+
       // 4. 行政区图 (高德地图行政区划)
       baseLayers.value.admin = L.tileLayer('https://wprd0{s}.is.autonavi.com/appmaptile?lang=zh_cn&size=1&style=7&x={x}&y={y}&z={z}', {
         subdomains: "1234",
@@ -288,11 +289,11 @@ export default {
       Object.keys(baseLayers.value).forEach(key => {
         handleLayerEvents(key, baseLayers.value[key]);
       });
-      
+
       // 初始化绘制图层
       drawnItems.value = new L.FeatureGroup();
       map.value.addLayer(drawnItems.value);
-      
+
       // 配置绘制控件
       drawControl.value = new L.Control.Draw({
         draw: {
@@ -313,15 +314,15 @@ export default {
           remove: true
         }
       });
-      
+
       // 添加绘制控件到地图
       map.value.addControl(drawControl.value);
-      
+
       // 监听绘制完成事件
       map.value.on(L.Draw.Event.CREATED, (event) => {
         const layer = event.layer;
         drawnItems.value.addLayer(layer);
-        
+
         // 记录选择的区域或点
         if (event.layerType === 'rectangle') {
           selectedItems.value.push({
@@ -336,11 +337,11 @@ export default {
             layer: layer
           });
         }
-        
+
         // 获取选中区域的坐标信息
         const selectedArea = layer.toGeoJSON();
         console.log('选中区域:', selectedArea);
-        
+
         // 如果当前是框选模式，自动启用新的框选工具
         if (selectionMode.value === 'box') {
           setTimeout(() => {
@@ -348,7 +349,7 @@ export default {
           }, 100);
         }
       });
-      
+
       // 监听编辑完成事件
       map.value.on(L.Draw.Event.EDITED, (event) => {
         const layers = event.layers;
@@ -362,12 +363,12 @@ export default {
               editedItem.latlng = layer.getLatLng();
             }
           }
-          
+
           const editedArea = layer.toGeoJSON();
           console.log('编辑后的区域:', editedArea);
         });
       });
-      
+
       // 监听删除完成事件
       map.value.on(L.Draw.Event.DELETED, (event) => {
         const layers = event.layers;
@@ -378,14 +379,14 @@ export default {
             selectedItems.value.splice(index, 1);
           }
         });
-        
+
         console.log('已删除选中区域');
       });
-      
+
       // 默认添加标准地图图层
       baseLayers.value.osm.addTo(map.value);
     };
-    
+
     // 禁用当前所有选择模式
     const disableAllSelectionModes = () => {
       // 禁用当前活动的绘制工具
@@ -393,27 +394,27 @@ export default {
         activeDrawer.value.disable();
         activeDrawer.value = null;
       }
-      
+
       // 移除点选事件处理器
       if (map.value && map.value._pointSelectHandler) {
         map.value.off('click', map.value._pointSelectHandler);
         map.value._pointSelectHandler = null;
       }
     };
-    
+
     // 启用区域框选
     const enableBoxSelect = () => {
       // 如果已经是框选模式，不做任何操作
       if (selectionMode.value === 'box') {
         return;
       }
-      
+
       // 先禁用所有选择模式
       disableAllSelectionModes();
-      
+
       // 设置选择模式为框选
       selectionMode.value = 'box';
-      
+
       // 创建新的矩形绘制工具并启用
       activeDrawer.value = new L.Draw.Rectangle(map.value, {
         shapeOptions: {
@@ -423,64 +424,64 @@ export default {
       });
       activeDrawer.value.enable();
     };
-    
+
     // 启用点选
     const enablePointSelect = () => {
       // 如果已经是点选模式，不做任何操作
       if (selectionMode.value === 'point') {
         return;
       }
-      
+
       // 先禁用所有选择模式
       disableAllSelectionModes();
-      
+
       // 设置选择模式为点选
       selectionMode.value = 'point';
-      
+
       // 添加新的点击事件处理器
       map.value._pointSelectHandler = (e) => {
         const marker = L.marker(e.latlng).addTo(drawnItems.value);
-        
+
         // 记录新添加的点
         selectedItems.value.push({
           type: 'point',
           latlng: e.latlng,
           layer: marker
         });
-        
+
         console.log('选中点:', e.latlng);
       };
-      
+
       map.value.on('click', map.value._pointSelectHandler);
     };
-    
+
     // 清除选择
     const clearSelection = () => {
       // 清除所有已绘制的图层
       drawnItems.value.clearLayers();
-      
+
       // 清空选择列表
       selectedItems.value = [];
-      
+
       // 禁用所有选择模式
       disableAllSelectionModes();
-      
+
       // 重置选择模式
       selectionMode.value = 'none';
     };
-    
+
     onMounted(() => {
       // 初始化地图
       initMap();
     });
-    
+
     onUnmounted(() => {
       // 清理地图资源
       if (map.value) {
         map.value.remove();
       }
     });
-    
+
     return {
       mapContainer,
       selectionMode,
@@ -522,28 +523,20 @@ export default {
   right: 20px;
   z-index: 1000;
   display: flex;
+  flex-direction: column;
   gap: 8px;
   background-color: white;
   padding: 10px;
   border-radius: 8px;
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(0, 0, 0, 0.05);
   transition: all 0.3s ease;
 }
 
 .map-layers-control {
-  position: absolute;
-  top: 20px;
-  left: 20px;
-  z-index: 1000;
-  background-color: white;
-  padding: 10px;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  transition: all 0.3s ease;
+  margin-top: 10px;
+  padding-top: 10px;
+  border-top: 1px solid #eee;
 }
 
 .map-error-notice {
@@ -751,22 +744,19 @@ export default {
   .map-controls {
     top: 10px;
     right: 10px;
-    flex-direction: column;
-    gap: 5px;
     padding: 8px;
   }
-  
+
   .map-layers-control {
-    top: 10px;
-    left: 10px;
-    padding: 8px;
+    margin-top: 8px;
+    padding-top: 8px;
   }
-  
+
   .layer-options button {
     padding: 6px 10px;
     font-size: 12px;
   }
-  
+
   .selection-info {
     bottom: 10px;
     left: 10px;
@@ -775,4 +765,4 @@ export default {
     padding: 10px;
   }
 }
-</style> 
+</style>
