@@ -843,19 +843,51 @@ export default {
 
 .zoom-controls {
   display: flex;
-  gap: 4px;
+  gap: 1px;
   margin-bottom: 12px;
+  background: rgba(0, 0, 0, 0.05);
+  padding: 1px;
+  border-radius: 8px;
 }
 
 .zoom-controls button {
-  width: 32px !important;
-  height: 32px !important;
+  width: 36px !important;
+  height: 36px !important;
   padding: 0 !important;
-  font-size: 18px;
-  font-weight: 600;
+  font-size: 20px;
+  font-weight: 500;
   display: flex;
   align-items: center;
   justify-content: center;
+  background-color: white !important;
+  border: none !important;
+  box-shadow: none !important;
+  color: #2c3e50;
+  transition: all 0.2s ease;
+}
+
+.zoom-controls button:first-child {
+  border-top-right-radius: 0 !important;
+  border-bottom-right-radius: 0 !important;
+  border-top-left-radius: 8px !important;
+  border-bottom-left-radius: 8px !important;
+}
+
+.zoom-controls button:last-child {
+  border-top-left-radius: 0 !important;
+  border-bottom-left-radius: 0 !important;
+  border-top-right-radius: 8px !important;
+  border-bottom-right-radius: 8px !important;
+}
+
+.zoom-controls button:hover {
+  background-color: #f8f9fa !important;
+  transform: none !important;
+}
+
+.zoom-controls button:active {
+  background-color: #e9ecef !important;
+  transform: translateY(1px) !important;
 }
 
 .zoom-icon {
@@ -865,5 +897,6 @@ export default {
   justify-content: center;
   width: 100%;
   height: 100%;
+  user-select: none;
 }
 </style>

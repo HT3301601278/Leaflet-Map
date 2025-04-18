@@ -5,9 +5,6 @@
         <img src="@/assets/map-logo.svg" alt="地图选择器" class="logo-img" />
         <h1>中国地图选择器</h1>
       </div>
-      <div class="header-desc">
-        <p>您可以使用区域框选、点选功能来选择感兴趣的地域</p>
-      </div>
     </header>
     <ChinaMap />
   </div>
