@@ -525,18 +525,109 @@ export default {
   display: flex;
   flex-direction: column;
   gap: 8px;
-  background-color: white;
-  padding: 10px;
-  border-radius: 8px;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  border: 1px solid rgba(0, 0, 0, 0.05);
+  background-color: rgba(255, 255, 255, 0.92);
+  padding: 14px;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12), 0 2px 8px rgba(0, 0, 0, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.8);
   transition: all 0.3s ease;
+  backdrop-filter: blur(10px);
+  max-width: 180px;
+}
+
+.map-controls:hover {
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.15), 0 3px 10px rgba(0, 0, 0, 0.05);
+  transform: translateY(-1px);
 }
 
 .map-layers-control {
-  margin-top: 10px;
-  padding-top: 10px;
-  border-top: 1px solid #eee;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(0, 0, 0, 0.07);
+}
+
+.control-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 10px;
+  color: #2c3e50;
+  position: relative;
+  padding-left: 6px;
+  letter-spacing: 0.5px;
+}
+
+.control-title::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 3px;
+  height: 14px;
+  background-color: #3498db;
+  border-radius: 3px;
+}
+
+.layer-options {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.map-controls button,
+.layer-options button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  padding: 9px 14px;
+  background-color: #fff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  color: #505050;
+  transition: all 0.2s ease;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+  white-space: nowrap;
+  width: 100%;
+}
+
+.map-controls button::before,
+.layer-options button::before {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0));
+  z-index: -1;
+}
+
+.map-controls button.active,
+.layer-options button.active {
+  background-color: #3498db;
+  color: white;
+  border-color: rgba(52, 152, 219, 0.5);
+  box-shadow: 0 4px 8px rgba(52, 152, 219, 0.25);
+  font-weight: 600;
+}
+
+.map-controls button:hover,
+.layer-options button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.08);
+  background-color: #f8f9fa;
+}
+
+.map-controls button.active:hover,
+.layer-options button.active:hover {
+  background-color: #2980b9;
+  transform: translateY(-1px);
 }
 
 .map-error-notice {
@@ -594,72 +685,6 @@ export default {
   to {
     transform: rotate(360deg);
   }
-}
-
-.control-title {
-  font-size: 13px;
-  font-weight: 600;
-  margin-bottom: 8px;
-  color: #2c3e50;
-}
-
-.layer-options {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.map-controls button,
-.layer-options button {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 5px;
-  padding: 8px 14px;
-  background-color: #fff;
-  border: 1px solid rgba(0, 0, 0, 0.1);
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  color: #505050;
-  transition: all 0.2s ease;
-  position: relative;
-  overflow: hidden;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
-  white-space: nowrap;
-}
-
-.map-controls button::before,
-.layer-options button::before {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(to bottom, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0));
-  z-index: -1;
-}
-
-.map-controls button.active,
-.layer-options button.active {
-  background-color: #3498db;
-  color: white;
-  border-color: #3498db;
-  box-shadow: 0 2px 5px rgba(52, 152, 219, 0.3);
-}
-
-.map-controls button:hover,
-.layer-options button:hover {
-  transform: translateY(-1px);
-  box-shadow: 0 3px 5px rgba(0, 0, 0, 0.1);
-  background-color: #f8f9fa;
-}
-
-.map-controls button.active:hover,
-.layer-options button.active:hover {
-  background-color: #2980b9;
 }
 
 .selection-info {
