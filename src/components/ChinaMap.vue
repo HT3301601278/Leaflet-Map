@@ -49,6 +49,11 @@ import 'leaflet/dist/leaflet.css';
 import 'leaflet-draw';
 import 'leaflet-draw/dist/leaflet.draw.css';
 
+// 修复Leaflet默认图标问题
+import iconRetinaUrl from 'leaflet/dist/images/marker-icon-2x.png';
+import iconUrl from 'leaflet/dist/images/marker-icon.png';
+import shadowUrl from 'leaflet/dist/images/marker-shadow.png';
+
 export default {
   name: 'ChinaMap',
   setup() {
@@ -249,6 +254,19 @@ export default {
 
     // 初始化地图
     const initMap = () => {
+      // 修复Leaflet默认图标问题
+      delete L.Icon.Default.prototype._getIconUrl;
+      L.Icon.Default.mergeOptions({
+        iconRetinaUrl,
+        iconUrl,
+        shadowUrl,
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        tooltipAnchor: [16, -28],
+        shadowSize: [41, 41]
+      });
+
       // 设置中国地图的中心点和缩放级别
       map.value = L.map(mapContainer.value).setView([35.86166, 104.195397], 4);
 
